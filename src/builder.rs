@@ -24,6 +24,7 @@ const ENV_ROOTLESS: &str = "REPRO_ROOTLESS";
 pub struct Builder {
     pub context: PathBuf,
     pub runtime: String,
+    pub runtime_path: PathBuf,
     pub rootless: bool,
     pub buildkit_image: String,
     pub source_date_epoch: i64,
@@ -62,7 +63,9 @@ pub struct BuildParams {
 impl Builder {
     /// Create a builder from unresolved parameters.
     pub fn new(params: BuildParams) -> Result<Self> {
-        let runtime = resolve_runtime(params.runtime.as_deref())?;
+        let resolved = resolve_runtime(params.runtime.as_deref())?;
+        let runtime = resolved.name;
+        let runtime_path = resolved.path;
         let rootless = resolve_rootless(&runtime, params.rootless)?;
         let buildkit_image =
             resolve_buildkit_image(params.buildkit_image.as_deref(), rootless, &runtime);
@@ -93,6 +96,7 @@ impl Builder {
         Ok(Self {
             context,
             runtime,
+            runtime_path,
             rootless,
             buildkit_image,
             source_date_epoch,
@@ -142,7 +146,12 @@ impl Builder {
     }
 
     fn podman_build(&self) -> Result<()> {
-        let mut cmd = vec!["podman".into(), "run".into(), "-it".into(), "--rm".into()];
+        let mut cmd = vec![
+            self.runtime_path.display().to_string(),
+            "run".into(),
+            "-it".into(),
+            "--rm".into(),
+        ];
 
         // Volume mounts
         cmd.extend(["-v".into(), "buildkit_cache:/tmp/cache".into()]);
@@ -251,7 +260,7 @@ impl Builder {
 
         // Create builder (ignore failure if it already exists)
         let create_cmd = vec![
-            "docker".into(),
+            self.runtime_path.display().to_string(),
             "buildx".into(),
             "create".into(),
             "--name".into(),
@@ -262,7 +271,7 @@ impl Builder {
         run_cmd_no_check(&create_cmd, self.dry);
 
         let mut cmd = vec![
-            "docker".into(),
+            self.runtime_path.display().to_string(),
             "buildx".into(),
             "--builder".into(),
             builder_name,
@@ -321,6 +330,19 @@ impl Builder {
     }
 }
 
+/// Prepend `paths` to an environment variable on a [`Command`], preserving
+/// any existing value from the current process environment.
+fn env_prepend_path(cmd: &mut Command, var: &str, paths: Vec<PathBuf>) {
+    let old = std::env::var_os(var);
+    let mut parts = paths;
+    if let Some(ref v) = old {
+        parts.extend(std::env::split_paths(v));
+    }
+    if let Ok(joined) = std::env::join_paths(&parts) {
+        cmd.env(var, joined);
+    }
+}
+
 fn run_cmd(cmd: &[String], dry: bool) -> Result<()> {
     let cmd_display = shell_words::join(cmd);
     if dry {
@@ -328,8 +350,15 @@ fn run_cmd(cmd: &[String], dry: bool) -> Result<()> {
         return Ok(());
     }
     debug!("running: {cmd_display}");
-    let status = Command::new(&cmd[0])
-        .args(&cmd[1..])
+    let mut proc = Command::new(&cmd[0]);
+    proc.args(&cmd[1..]);
+    // Ensure the runtime's directory is on PATH for subprocesses (e.g. buildx plugin)
+    if let Some(parent) = Path::new(&cmd[0]).parent()
+        && parent.is_absolute()
+    {
+        env_prepend_path(&mut proc, "PATH", vec![parent.to_path_buf()]);
+    }
+    let status = proc
         .status()
         .with_context(|| format!("executing {}", cmd[0]))?;
     if !status.success() {
@@ -349,27 +378,32 @@ fn run_cmd_no_check(cmd: &[String], dry: bool) {
     let _ = Command::new(&cmd[0]).args(&cmd[1..]).status();
 }
 
-fn detect_container_runtime() -> Option<String> {
-    if which::which("docker").is_ok() {
-        Some("docker".into())
-    } else if which::which("podman").is_ok() {
-        Some("podman".into())
-    } else {
-        None
-    }
+/// Resolved runtime: name + absolute path to the binary.
+struct ResolvedRuntime {
+    name: String,
+    path: PathBuf,
 }
 
-fn resolve_runtime(runtime: Option<&str>) -> Result<String> {
+fn discover_runtime(name: &str) -> Result<ResolvedRuntime> {
+    let path = which::which(name).with_context(|| format!("{name} not found on PATH"))?;
+    Ok(ResolvedRuntime {
+        name: name.to_string(),
+        path,
+    })
+}
+
+fn resolve_runtime(runtime: Option<&str>) -> Result<ResolvedRuntime> {
     if let Some(r) = runtime {
-        return Ok(r.to_string());
+        return discover_runtime(r);
     }
     if let Ok(r) = std::env::var(ENV_RUNTIME) {
         if r != "docker" && r != "podman" {
             bail!("only 'docker' or 'podman' runtimes are supported");
         }
-        return Ok(r);
+        return discover_runtime(&r);
     }
-    detect_container_runtime()
+    discover_runtime("docker")
+        .or_else(|_| discover_runtime("podman"))
         .context("no container runtime (docker or podman) detected on your system")
 }
 
@@ -518,8 +552,17 @@ mod tests {
 
     #[test]
     fn resolve_runtime_explicit() {
-        assert_eq!(resolve_runtime(Some("docker")).unwrap(), "docker");
-        assert_eq!(resolve_runtime(Some("podman")).unwrap(), "podman");
+        // Only test runtimes actually available on this system
+        if which::which("docker").is_ok() {
+            let r = resolve_runtime(Some("docker")).unwrap();
+            assert_eq!(r.name, "docker");
+            assert!(r.path.exists());
+        }
+        if which::which("podman").is_ok() {
+            let r = resolve_runtime(Some("podman")).unwrap();
+            assert_eq!(r.name, "podman");
+            assert!(r.path.exists());
+        }
     }
 
     // --- resolve_use_cache ---
