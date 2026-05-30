@@ -140,11 +140,12 @@ pub fn parse_tarball(path: &Path) -> Result<Vec<ManifestInfo>> {
 /// Truncate a string for display, removing newlines.
 fn snip_contents(contents: &str, max_len: usize) -> String {
     let flat: String = contents.chars().filter(|c| *c != '\n').collect();
-    if flat.len() > max_len {
-        let omitted = flat.len() - max_len;
+    let char_count = flat.chars().count();
+    if char_count > max_len {
+        let omitted = char_count - max_len;
+        let truncated: String = flat.chars().take(max_len).collect();
         format!(
-            "{}  [... {omitted} characters omitted. Pass --show-contents to print them in their entirety]",
-            &flat[..max_len]
+            "{truncated}  [... {omitted} characters omitted. Pass --show-contents to print them in their entirety]"
         )
     } else {
         flat
