@@ -15,7 +15,7 @@ struct Cli {
 #[derive(Subcommand)]
 enum Commands {
     /// Perform a reproducible container image build
-    Build(BuildArgs),
+    Build(Box<BuildArgs>),
     /// Analyze an OCI image tarball
     Analyze(AnalyzeArgs),
 }
