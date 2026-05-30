@@ -1,0 +1,52 @@
+{
+  "documents": [
+    {
+      "id": "src_builder",
+      "title": "Build Orchestration (builder.rs)",
+      "source": "src/builder.rs",
+      "raw_content": "Drives Docker Buildx or Podman+BuildKit to produce deterministic OCI image tarballs using SOURCE_DATE_EPOCH and rewrite-timestamp=true.\n\nBuildParams — raw CLI input struct. Builder — resolved/validated config struct. Builder::new(params) resolves env var fallbacks and validates constraints. Builder::build() dispatches to docker_build() or podman_build() based on runtime.\n\nEnv vars: REPRO_RUNTIME, REPRO_DATETIME, REPRO_SOURCE_DATE_EPOCH, REPRO_CACHE, REPRO_ROOTLESS.\n\nDocker path: creates a named buildx builder keyed by SHA-256 of buildkit image, then runs docker buildx build with --output type=docker,rewrite-timestamp=true.\n\nPodman path: runs podman run with buildctl-daemonless.sh entrypoint, volume-mounts context/output/cache dirs, passes buildctl build --frontend dockerfile.v0.\n\nResolution functions: resolve_runtime (CLI > env > auto-detect), resolve_sde (CLI > env, parses RFC3339/ISO dates), resolve_rootless (podman-only constraint), resolve_buildkit_image (pin by digest, docker.io prefix for podman), resolve_buildkit_args/resolve_buildx_args (runtime-specific validation).\n\nDefault BuildKit images pinned by digest: moby/buildkit:v0.19.0.",
+      "chunks": [
+        {
+          "id": "350a4446-f202-4fc3-a75f-8551d0765ae7",
+          "doc_id": "src_builder",
+          "text": "Drives Docker Buildx or Podman+BuildKit to produce deterministic OCI image tarballs using SOURCE_DATE_EPOCH and rewrite-timestamp=true.\n\nBuildParams — raw CLI input struct. Builder — resolved/validated config struct. Builder::new(params) resolves env var fallbacks and validates constraints. Builder::build() dispatches to docker_build() or podman_build() based on runtime.\n\nEnv vars: REPRO_RUNTIME, REPRO_DATETIME, REPRO_SOURCE_DATE_EPOCH, REPRO_CACHE, REPRO_ROOTLESS.\n\nDocker path: creates a named buildx builder keyed by SHA-256 of buildkit image, then runs docker buildx build with --output type=docker,rewrite-timestamp=true.\n\nPodman path: runs podman run with buildctl-daemonless.sh entrypoint, volume-mounts context/output/cache dirs, passes buildctl build --frontend dockerfile.v0.\n\nResolution functions: resolve_runtime (CLI > env > auto-detect), resolve_sde (CLI > env, parses RFC3339/ISO dates), resolve_rootless (podman-only constraint), resolve_buildkit_image (pin by digest, docker.io p",
+          "offset": 0
+        },
+        {
+          "id": "8569a960-d75d-4fe6-a76b-aaa9fdf66628",
+          "doc_id": "src_builder",
+          "text": "n functions: resolve_runtime (CLI > env > auto-detect), resolve_sde (CLI > env, parses RFC3339/ISO dates), resolve_rootless (podman-only constraint), resolve_buildkit_image (pin by digest, docker.io prefix for podman), resolve_buildkit_args/resolve_buildx_args (runtime-specific validation).\n\nDefault BuildKit images pinned by digest: moby/buildkit:v0.19.0.",
+          "offset": 800
+        }
+      ]
+    },
+    {
+      "id": "src_main",
+      "title": "CLI Entry Point (main.rs)",
+      "source": "src/main.rs",
+      "raw_content": "mod builder;\nmod oci;\n\nuse anyhow::Result;\nuse clap::{Parser, Subcommand};\nuse std::path::PathBuf;\n\n#[derive(Parser)]\n#[command(name = \"repro\", about = \"Reproducible container image builder\")]\nstruct Cli {\n    #[command(subcommand)]\n    command: Commands,\n}\n\n#[derive(Subcommand)]\nenum Commands {\n    Build(BuildArgs),\n    Analyze(AnalyzeArgs),\n}\n\nBuildArgs dispatches to builder::Builder::new(params)?.build()\nAnalyzeArgs dispatches to oci::parse_tarball() and oci::verify_digest()",
+      "chunks": [
+        {
+          "id": "dd180d87-e740-4752-a1ca-ab387c56b718",
+          "doc_id": "src_main",
+          "text": "mod builder;\nmod oci;\n\nuse anyhow::Result;\nuse clap::{Parser, Subcommand};\nuse std::path::PathBuf;\n\n#[derive(Parser)]\n#[command(name = \"repro\", about = \"Reproducible container image builder\")]\nstruct Cli {\n    #[command(subcommand)]\n    command: Commands,\n}\n\n#[derive(Subcommand)]\nenum Commands {\n    Build(BuildArgs),\n    Analyze(AnalyzeArgs),\n}\n\nBuildArgs dispatches to builder::Builder::new(params)?.build()\nAnalyzeArgs dispatches to oci::parse_tarball() and oci::verify_digest()",
+          "offset": 0
+        }
+      ]
+    },
+    {
+      "id": "src_oci",
+      "title": "OCI Tarball Parser (oci.rs)",
+      "source": "src/oci.rs",
+      "raw_content": "OCI tarball parsing and analysis. Compatible with OCI image layout spec.\n\nManifestInfo — parsed manifest/index entry with path, contents, digest (SHA-256), media_type, platform, and child manifests.\nManifestDescriptor — child reference with digest, mediaType, platform.\nPlatformSpec — os + architecture.\n\nparse_tarball(path) — entry point. DFS traversal starting from index.json, recursively following manifest descriptors.\nparse_manifest — opens tarball, extracts file by normalized path, computes SHA-256 digest, parses JSON.\nget_file_from_tarball — handles ./ prefix variations in tar entry paths.\nflate2_or_raw — auto-detects gzip compression by file extension.\nnormalize_path — converts sha256:abc... to blobs/sha256/abc...\nprint_info — displays parsed OCI info, truncates contents unless --show-contents.\nverify_digest — compares computed digest against expected value.",
+      "chunks": [
+        {
+          "id": "ad16064f-0675-4c50-86c1-6ad8feaae135",
+          "doc_id": "src_oci",
+          "text": "OCI tarball parsing and analysis. Compatible with OCI image layout spec.\n\nManifestInfo — parsed manifest/index entry with path, contents, digest (SHA-256), media_type, platform, and child manifests.\nManifestDescriptor — child reference with digest, mediaType, platform.\nPlatformSpec — os + architecture.\n\nparse_tarball(path) — entry point. DFS traversal starting from index.json, recursively following manifest descriptors.\nparse_manifest — opens tarball, extracts file by normalized path, computes SHA-256 digest, parses JSON.\nget_file_from_tarball — handles ./ prefix variations in tar entry paths.\nflate2_or_raw — auto-detects gzip compression by file extension.\nnormalize_path — converts sha256:abc... to blobs/sha256/abc...\nprint_info — displays parsed OCI info, truncates contents unless --show-contents.\nverify_digest — compares computed digest against expected value.",
+          "offset": 0
+        }
+      ]
+    }
+  ]
+}

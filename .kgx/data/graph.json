@@ -1,0 +1,384 @@
+{
+  "nodes": [
+    {
+      "id": "8e0275d9-2c6b-42e7-a6a1-1ba8953559e5",
+      "name": "AnalyzeArgs",
+      "type": "struct",
+      "supporting_text": "Clap args for analyze subcommand — tarball path, expected_image_digest, show_contents",
+      "source_docs": [
+        "src_main"
+      ]
+    },
+    {
+      "id": "fedf2c26-1f12-4ae1-bf91-03400765b9d5",
+      "name": "BuildArgs",
+      "type": "struct",
+      "supporting_text": "Clap args for the build subcommand — context, runtime, datetime, source_date_epoch, file, output, tag, build_arg, annotation, platform, etc.",
+      "source_docs": [
+        "src_main"
+      ]
+    },
+    {
+      "id": "ad95e601-7960-457a-807a-8e4f3766895d",
+      "name": "BuildParams",
+      "type": "struct",
+      "supporting_text": "Input parameters before resolution — raw CLI values",
+      "source_docs": [
+        "src_builder"
+      ]
+    },
+    {
+      "id": "18d26c3a-7118-4319-a578-3c3890944466",
+      "name": "Builder",
+      "type": "struct",
+      "supporting_text": "Resolved build configuration struct with context, runtime, rootless, buildkit_image, source_date_epoch, etc.",
+      "source_docs": [
+        "src_builder"
+      ]
+    },
+    {
+      "id": "fd8e4276-b584-49e8-9584-3e19109737bf",
+      "name": "Cli",
+      "type": "struct",
+      "supporting_text": "Top-level clap Parser struct with subcommand dispatch",
+      "source_docs": [
+        "src_main"
+      ]
+    },
+    {
+      "id": "a511afd7-e9e9-46d2-bca0-7ae6e2e6bb09",
+      "name": "Commands",
+      "type": "enum",
+      "supporting_text": "Subcommand enum: Build(BuildArgs) | Analyze(AnalyzeArgs)",
+      "source_docs": [
+        "src_main"
+      ]
+    },
+    {
+      "id": "63f05a87-5297-440a-b391-4f9c3fe90516",
+      "name": "ManifestDescriptor",
+      "type": "struct",
+      "supporting_text": "Child manifest reference with digest, mediaType, platform",
+      "source_docs": [
+        "src_oci"
+      ]
+    },
+    {
+      "id": "d1b26b4a-77da-41d5-a4a8-eaa38f0e5268",
+      "name": "ManifestInfo",
+      "type": "struct",
+      "supporting_text": "Parsed manifest/index entry: path, contents, digest, media_type, platform, manifests",
+      "source_docs": [
+        "src_oci"
+      ]
+    },
+    {
+      "id": "4333d733-daeb-4650-9850-c572aa43b123",
+      "name": "PlatformSpec",
+      "type": "struct",
+      "supporting_text": "Platform descriptor: os + architecture fields",
+      "source_docs": [
+        "src_oci"
+      ]
+    },
+    {
+      "id": "28c31ea3-26ab-48de-91f2-43857435d293",
+      "name": "SOURCE_DATE_EPOCH",
+      "type": "concept",
+      "supporting_text": "Unix timestamp injected as build-arg to make image layer timestamps deterministic",
+      "source_docs": [
+        "src_builder"
+      ]
+    },
+    {
+      "id": "4b3edd47-8807-4e3a-8214-a8dd6c0e48d3",
+      "name": "builder module",
+      "type": "module",
+      "supporting_text": "mod builder — build orchestration",
+      "source_docs": [
+        "src_main"
+      ]
+    },
+    {
+      "id": "bad3f6f6-86b7-4083-8ae5-b6335c2480ae",
+      "name": "docker_build",
+      "type": "function",
+      "supporting_text": "Docker Buildx code path: creates named builder, runs docker buildx build",
+      "source_docs": [
+        "src_builder"
+      ]
+    },
+    {
+      "id": "9ccf5b9a-43b1-43e1-8653-a65a67cdaf24",
+      "name": "normalize_path",
+      "type": "function",
+      "supporting_text": "Converts sha256:abc... to blobs/sha256/abc... for tarball lookup",
+      "source_docs": [
+        "src_oci"
+      ]
+    },
+    {
+      "id": "f5583728-5773-4ca3-bbbf-198e653d7f45",
+      "name": "oci module",
+      "type": "module",
+      "supporting_text": "mod oci — OCI tarball parsing and analysis",
+      "source_docs": [
+        "src_main"
+      ]
+    },
+    {
+      "id": "436b9f6c-d598-499b-8f0e-81a4070e4a66",
+      "name": "parse_manifest",
+      "type": "function",
+      "supporting_text": "Opens tarball, extracts file, computes SHA-256, parses manifest JSON",
+      "source_docs": [
+        "src_oci"
+      ]
+    },
+    {
+      "id": "17cbb343-e598-4fa6-b566-467d2fffecea",
+      "name": "parse_tarball",
+      "type": "function",
+      "supporting_text": "Entry point: DFS traversal from index.json through manifest descriptors",
+      "source_docs": [
+        "src_oci"
+      ]
+    },
+    {
+      "id": "41e8ff04-0ed7-4dd3-9afc-e87d21cb3212",
+      "name": "podman_build",
+      "type": "function",
+      "supporting_text": "Podman code path: podman run with buildctl-daemonless.sh entrypoint",
+      "source_docs": [
+        "src_builder"
+      ]
+    },
+    {
+      "id": "51819c26-f3f0-42a8-a0f5-4b84457fb853",
+      "name": "resolve_runtime",
+      "type": "function",
+      "supporting_text": "CLI flag > REPRO_RUNTIME env > auto-detect docker/podman on PATH",
+      "source_docs": [
+        "src_builder"
+      ]
+    },
+    {
+      "id": "ed2ae414-6103-4169-98f4-033e00ab1891",
+      "name": "resolve_sde",
+      "type": "function",
+      "supporting_text": "Resolves SOURCE_DATE_EPOCH from CLI --source-date-epoch, --datetime, or env vars. Parses RFC3339, ISO datetime, ISO date formats.",
+      "source_docs": [
+        "src_builder"
+      ]
+    },
+    {
+      "id": "229da7ac-f325-4715-bcbb-ccb598ac85ff",
+      "name": "rewrite-timestamp",
+      "type": "concept",
+      "supporting_text": "BuildKit output option that rewrites file timestamps in layers for reproducibility",
+      "source_docs": [
+        "src_builder"
+      ]
+    },
+    {
+      "id": "2ab1310c-8d65-4fba-8f8a-6dfd881c3bba",
+      "name": "verify_digest",
+      "type": "function",
+      "supporting_text": "Compares computed SHA-256 digest of manifest against expected value",
+      "source_docs": [
+        "src_oci"
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "id": "63555fe5-85eb-451f-9783-ffb11ef4974e",
+      "source": "fd8e4276-b584-49e8-9584-3e19109737bf",
+      "target": "a511afd7-e9e9-46d2-bca0-7ae6e2e6bb09",
+      "type": "contains",
+      "confidence": 1.0,
+      "supporting_text": "Cli struct has command: Commands field",
+      "source_doc": "src_main"
+    },
+    {
+      "id": "b9447025-5800-4a12-84ce-5ab5c7108f16",
+      "source": "a511afd7-e9e9-46d2-bca0-7ae6e2e6bb09",
+      "target": "fedf2c26-1f12-4ae1-bf91-03400765b9d5",
+      "type": "contains",
+      "confidence": 1.0,
+      "supporting_text": "Commands::Build(BuildArgs)",
+      "source_doc": "src_main"
+    },
+    {
+      "id": "16978201-3cce-49a0-afec-a788e5632c0a",
+      "source": "a511afd7-e9e9-46d2-bca0-7ae6e2e6bb09",
+      "target": "8e0275d9-2c6b-42e7-a6a1-1ba8953559e5",
+      "type": "contains",
+      "confidence": 1.0,
+      "supporting_text": "Commands::Analyze(AnalyzeArgs)",
+      "source_doc": "src_main"
+    },
+    {
+      "id": "ec5a3a4b-f81c-47d2-8221-c68f8f2823a6",
+      "source": "fedf2c26-1f12-4ae1-bf91-03400765b9d5",
+      "target": "4b3edd47-8807-4e3a-8214-a8dd6c0e48d3",
+      "type": "dispatches_to",
+      "confidence": 1.0,
+      "supporting_text": "builder::Builder::new(params)?.build()",
+      "source_doc": "src_main"
+    },
+    {
+      "id": "d4c9c612-ab2a-4f5c-8e82-6495bdeb1012",
+      "source": "8e0275d9-2c6b-42e7-a6a1-1ba8953559e5",
+      "target": "f5583728-5773-4ca3-bbbf-198e653d7f45",
+      "type": "dispatches_to",
+      "confidence": 1.0,
+      "supporting_text": "oci::parse_tarball() and oci::verify_digest()",
+      "source_doc": "src_main"
+    },
+    {
+      "id": "8268eddd-f064-4f14-9e8d-e92de93ec394",
+      "source": "ad95e601-7960-457a-807a-8e4f3766895d",
+      "target": "18d26c3a-7118-4319-a578-3c3890944466",
+      "type": "resolved_by",
+      "confidence": 1.0,
+      "supporting_text": "Builder::new(params: BuildParams) resolves raw input into validated config",
+      "source_doc": "src_builder"
+    },
+    {
+      "id": "53a0422d-c5fe-447a-9464-92a5b0dd8b2c",
+      "source": "18d26c3a-7118-4319-a578-3c3890944466",
+      "target": "bad3f6f6-86b7-4083-8ae5-b6335c2480ae",
+      "type": "dispatches_to",
+      "confidence": 1.0,
+      "supporting_text": "Builder::build() calls docker_build() when runtime is docker",
+      "source_doc": "src_builder"
+    },
+    {
+      "id": "dad13529-b679-4a16-90e4-f66e3951fcd9",
+      "source": "18d26c3a-7118-4319-a578-3c3890944466",
+      "target": "41e8ff04-0ed7-4dd3-9afc-e87d21cb3212",
+      "type": "dispatches_to",
+      "confidence": 1.0,
+      "supporting_text": "Builder::build() calls podman_build() when runtime is podman",
+      "source_doc": "src_builder"
+    },
+    {
+      "id": "ff9b6109-ed5a-4309-82db-09d1309659c8",
+      "source": "18d26c3a-7118-4319-a578-3c3890944466",
+      "target": "28c31ea3-26ab-48de-91f2-43857435d293",
+      "type": "uses",
+      "confidence": 1.0,
+      "supporting_text": "Injected as --build-arg SOURCE_DATE_EPOCH=<value> in both paths",
+      "source_doc": "src_builder"
+    },
+    {
+      "id": "0811aba1-6992-4242-b9ec-1f875abee982",
+      "source": "18d26c3a-7118-4319-a578-3c3890944466",
+      "target": "229da7ac-f325-4715-bcbb-ccb598ac85ff",
+      "type": "uses",
+      "confidence": 1.0,
+      "supporting_text": "Output option rewrite-timestamp=true in both docker and podman paths",
+      "source_doc": "src_builder"
+    },
+    {
+      "id": "b18a9cea-7f5c-4809-bcae-7294174db349",
+      "source": "4b3edd47-8807-4e3a-8214-a8dd6c0e48d3",
+      "target": "18d26c3a-7118-4319-a578-3c3890944466",
+      "type": "contains",
+      "confidence": 1.0,
+      "supporting_text": "Builder struct is the main export of builder.rs",
+      "source_doc": "src_builder"
+    },
+    {
+      "id": "7d34944d-fb09-4ee7-b8f9-e0697c527b84",
+      "source": "4b3edd47-8807-4e3a-8214-a8dd6c0e48d3",
+      "target": "ad95e601-7960-457a-807a-8e4f3766895d",
+      "type": "contains",
+      "confidence": 1.0,
+      "supporting_text": "BuildParams struct is defined in builder.rs",
+      "source_doc": "src_builder"
+    },
+    {
+      "id": "a1ab2fb4-38ff-4e42-8ffd-e8200703ac9d",
+      "source": "51819c26-f3f0-42a8-a0f5-4b84457fb853",
+      "target": "18d26c3a-7118-4319-a578-3c3890944466",
+      "type": "used_by",
+      "confidence": 1.0,
+      "supporting_text": "Called in Builder::new() to resolve container runtime",
+      "source_doc": "src_builder"
+    },
+    {
+      "id": "a303f68e-0d03-45e3-bce9-efd556239d8d",
+      "source": "f5583728-5773-4ca3-bbbf-198e653d7f45",
+      "target": "d1b26b4a-77da-41d5-a4a8-eaa38f0e5268",
+      "type": "contains",
+      "confidence": 1.0,
+      "supporting_text": "ManifestInfo is the primary output type of oci.rs",
+      "source_doc": "src_oci"
+    },
+    {
+      "id": "bff0107e-233b-4b53-a513-0a49939f5bd7",
+      "source": "f5583728-5773-4ca3-bbbf-198e653d7f45",
+      "target": "17cbb343-e598-4fa6-b566-467d2fffecea",
+      "type": "contains",
+      "confidence": 1.0,
+      "supporting_text": "parse_tarball is the public entry point",
+      "source_doc": "src_oci"
+    },
+    {
+      "id": "02bb3c71-d20c-472a-ac57-a22ea6a31efd",
+      "source": "f5583728-5773-4ca3-bbbf-198e653d7f45",
+      "target": "2ab1310c-8d65-4fba-8f8a-6dfd881c3bba",
+      "type": "contains",
+      "confidence": 1.0,
+      "supporting_text": "verify_digest is a public function",
+      "source_doc": "src_oci"
+    },
+    {
+      "id": "47cb3de3-13d2-4b19-9ed1-cb1c39b19ab9",
+      "source": "17cbb343-e598-4fa6-b566-467d2fffecea",
+      "target": "436b9f6c-d598-499b-8f0e-81a4070e4a66",
+      "type": "calls",
+      "confidence": 1.0,
+      "supporting_text": "DFS calls parse_manifest for each manifest descriptor",
+      "source_doc": "src_oci"
+    },
+    {
+      "id": "5a971329-c492-4195-b7f9-6f4ecfbfa8c8",
+      "source": "436b9f6c-d598-499b-8f0e-81a4070e4a66",
+      "target": "d1b26b4a-77da-41d5-a4a8-eaa38f0e5268",
+      "type": "produces",
+      "confidence": 1.0,
+      "supporting_text": "Returns ManifestInfo with digest, contents, media_type",
+      "source_doc": "src_oci"
+    },
+    {
+      "id": "8472b2d2-8782-4d8b-8c1a-bd3397024142",
+      "source": "d1b26b4a-77da-41d5-a4a8-eaa38f0e5268",
+      "target": "63f05a87-5297-440a-b391-4f9c3fe90516",
+      "type": "contains",
+      "confidence": 1.0,
+      "supporting_text": "ManifestInfo.manifests: Vec<ManifestDescriptor>",
+      "source_doc": "src_oci"
+    },
+    {
+      "id": "2d96d79f-2149-48ef-a87b-7906172ff430",
+      "source": "63f05a87-5297-440a-b391-4f9c3fe90516",
+      "target": "4333d733-daeb-4650-9850-c572aa43b123",
+      "type": "contains",
+      "confidence": 0.9,
+      "supporting_text": "ManifestDescriptor.platform: Option<PlatformSpec>",
+      "source_doc": "src_oci"
+    },
+    {
+      "id": "f8bfc647-5a8a-40fe-9b26-3e74a8febd27",
+      "source": "436b9f6c-d598-499b-8f0e-81a4070e4a66",
+      "target": "9ccf5b9a-43b1-43e1-8653-a65a67cdaf24",
+      "type": "calls",
+      "confidence": 1.0,
+      "supporting_text": "Normalizes sha256: prefixed paths before tarball lookup",
+      "source_doc": "src_oci"
+    }
+  ]
+}
