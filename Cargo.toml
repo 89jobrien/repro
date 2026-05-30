@@ -19,3 +19,11 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 shell-words = "1"
 which = "7"
+
+[lib]
+name = "repro"
+path = "src/lib.rs"
+
+[[bin]]
+name = "repro"
+path = "src/main.rs"

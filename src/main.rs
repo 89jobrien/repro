@@ -1,5 +1,5 @@
-mod builder;
-mod oci;
+use repro::builder;
+use repro::oci;
 
 use anyhow::Result;
 use clap::{Parser, Subcommand};
