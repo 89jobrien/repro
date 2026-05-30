@@ -463,3 +463,252 @@ fn resolve_buildx_args(args: Option<&str>, runtime: &str) -> Result<Vec<String>>
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // --- resolve_sde ---
+
+    #[test]
+    fn resolve_sde_from_epoch() {
+        let result = resolve_sde(Some(1700000000), None).expect("should resolve");
+        assert_eq!(result, 1700000000);
+    }
+
+    #[test]
+    fn resolve_sde_from_rfc3339() {
+        let result = resolve_sde(None, Some("2024-01-15T12:00:00Z")).expect("should parse RFC3339");
+        assert_eq!(result, 1705320000);
+    }
+
+    #[test]
+    fn resolve_sde_from_iso_datetime() {
+        let result =
+            resolve_sde(None, Some("2024-01-15T12:00:00")).expect("should parse ISO datetime");
+        assert_eq!(result, 1705320000);
+    }
+
+    #[test]
+    fn resolve_sde_from_date_only() {
+        let result = resolve_sde(None, Some("2024-01-15")).expect("should parse date");
+        assert_eq!(result, 1705276800);
+    }
+
+    #[test]
+    fn resolve_sde_both_set_is_error() {
+        let result = resolve_sde(Some(100), Some("2024-01-15"));
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("not both"));
+    }
+
+    #[test]
+    fn resolve_sde_neither_set_is_error() {
+        let result = resolve_sde(None, None);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn resolve_sde_invalid_datetime_is_error() {
+        let result = resolve_sde(None, Some("not-a-date"));
+        assert!(result.is_err());
+    }
+
+    // --- resolve_runtime ---
+
+    #[test]
+    fn resolve_runtime_explicit() {
+        assert_eq!(resolve_runtime(Some("docker")).unwrap(), "docker");
+        assert_eq!(resolve_runtime(Some("podman")).unwrap(), "podman");
+    }
+
+    // --- resolve_use_cache ---
+
+    #[test]
+    fn resolve_use_cache_defaults_true() {
+        assert!(resolve_use_cache(false));
+    }
+
+    #[test]
+    fn resolve_use_cache_no_cache_flag() {
+        assert!(!resolve_use_cache(true));
+    }
+
+    // --- resolve_rootless ---
+
+    #[test]
+    fn resolve_rootless_podman_ok() {
+        assert!(resolve_rootless("podman", true).unwrap());
+    }
+
+    #[test]
+    fn resolve_rootless_docker_is_error() {
+        assert!(resolve_rootless("docker", true).is_err());
+    }
+
+    #[test]
+    fn resolve_rootless_false_always_ok() {
+        assert!(!resolve_rootless("docker", false).unwrap());
+        assert!(!resolve_rootless("podman", false).unwrap());
+    }
+
+    // --- resolve_buildkit_image ---
+
+    #[test]
+    fn resolve_buildkit_image_default() {
+        let img = resolve_buildkit_image(None, false, "docker");
+        assert!(img.contains("moby/buildkit"));
+        assert!(!img.starts_with("docker.io/"));
+    }
+
+    #[test]
+    fn resolve_buildkit_image_rootless_default() {
+        let img = resolve_buildkit_image(None, true, "podman");
+        assert!(img.contains("rootless"));
+        assert!(img.starts_with("docker.io/"));
+    }
+
+    #[test]
+    fn resolve_buildkit_image_podman_adds_prefix() {
+        let img = resolve_buildkit_image(Some("moby/buildkit:latest"), false, "podman");
+        assert!(img.starts_with("docker.io/"));
+    }
+
+    #[test]
+    fn resolve_buildkit_image_custom_already_prefixed() {
+        let img = resolve_buildkit_image(Some("docker.io/moby/buildkit:latest"), false, "podman");
+        assert_eq!(img, "docker.io/moby/buildkit:latest");
+    }
+
+    // --- resolve_buildkit_args / resolve_buildx_args ---
+
+    #[test]
+    fn resolve_buildkit_args_empty() {
+        assert!(resolve_buildkit_args(None, "podman").unwrap().is_empty());
+        assert!(
+            resolve_buildkit_args(Some(""), "podman")
+                .unwrap()
+                .is_empty()
+        );
+    }
+
+    #[test]
+    fn resolve_buildkit_args_docker_is_error() {
+        assert!(resolve_buildkit_args(Some("--foo"), "docker").is_err());
+    }
+
+    #[test]
+    fn resolve_buildkit_args_podman_splits() {
+        let args = resolve_buildkit_args(Some("--foo --bar baz"), "podman").unwrap();
+        assert_eq!(args, vec!["--foo", "--bar", "baz"]);
+    }
+
+    #[test]
+    fn resolve_buildx_args_empty() {
+        assert!(resolve_buildx_args(None, "docker").unwrap().is_empty());
+    }
+
+    #[test]
+    fn resolve_buildx_args_podman_is_error() {
+        assert!(resolve_buildx_args(Some("--foo"), "podman").is_err());
+    }
+
+    #[test]
+    fn resolve_buildx_args_docker_splits() {
+        let args = resolve_buildx_args(Some("--foo bar"), "docker").unwrap();
+        assert_eq!(args, vec!["--foo", "bar"]);
+    }
+
+    // --- property tests ---
+
+    mod proptests {
+        use super::*;
+        use proptest::prelude::*;
+
+        proptest! {
+            #[test]
+            fn sde_roundtrip_from_epoch(epoch in 0i64..=4_102_444_800i64) {
+                let result = resolve_sde(Some(epoch), None).unwrap();
+                prop_assert_eq!(result, epoch);
+            }
+
+            #[test]
+            fn rootless_false_never_errors(runtime in "(docker|podman)") {
+                prop_assert!(resolve_rootless(&runtime, false).is_ok());
+            }
+
+            #[test]
+            fn use_cache_no_cache_always_false(no_cache in proptest::bool::ANY) {
+                if no_cache {
+                    prop_assert!(!resolve_use_cache(true));
+                }
+            }
+        }
+    }
+}
+
+#[cfg(kani)]
+mod kani_proofs {
+    use super::*;
+
+    #[kani::proof]
+    fn use_cache_no_cache_always_false() {
+        assert!(!resolve_use_cache(true));
+    }
+
+    #[kani::proof]
+    fn rootless_docker_always_errors() {
+        assert!(resolve_rootless("docker", true).is_err());
+    }
+
+    #[kani::proof]
+    fn rootless_false_never_errors() {
+        assert!(resolve_rootless("docker", false).is_ok());
+        assert!(resolve_rootless("podman", false).is_ok());
+    }
+
+    #[kani::proof]
+    fn rootless_podman_ok() {
+        assert!(resolve_rootless("podman", true).is_ok());
+    }
+
+    #[kani::proof]
+    fn sde_both_set_always_errors() {
+        let epoch: i64 = kani::any();
+        assert!(resolve_sde(Some(epoch), Some("2024-01-01")).is_err());
+    }
+
+    #[kani::proof]
+    fn sde_neither_set_always_errors() {
+        assert!(resolve_sde(None, None).is_err());
+    }
+
+    #[kani::proof]
+    fn sde_epoch_identity() {
+        let epoch: i64 = kani::any();
+        let result = resolve_sde(Some(epoch), None).unwrap();
+        assert_eq!(result, epoch);
+    }
+
+    #[kani::proof]
+    fn buildkit_image_podman_has_prefix() {
+        let img = resolve_buildkit_image(None, false, "podman");
+        assert!(img.starts_with("docker.io/"));
+    }
+
+    #[kani::proof]
+    fn buildkit_image_rootless_has_prefix() {
+        let img = resolve_buildkit_image(None, true, "podman");
+        assert!(img.starts_with("docker.io/"));
+    }
+
+    #[kani::proof]
+    fn buildkit_args_docker_errors() {
+        assert!(resolve_buildkit_args(Some("--foo"), "docker").is_err());
+    }
+
+    #[kani::proof]
+    fn buildx_args_podman_errors() {
+        assert!(resolve_buildx_args(Some("--foo"), "podman").is_err());
+    }
+}

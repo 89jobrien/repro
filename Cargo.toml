@@ -27,3 +27,10 @@ path = "src/lib.rs"
 [[bin]]
 name = "repro"
 path = "src/main.rs"
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(kani)'] }
+
+[dev-dependencies]
+proptest = "1"
+tempfile = "3"

@@ -200,3 +200,269 @@ pub fn verify_digest(parsed: &[ManifestInfo], expected: &str) -> Result<()> {
     println!("Image digest matches {expected_hash}");
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // --- normalize_path ---
+
+    #[test]
+    fn normalize_path_sha256_prefix() {
+        assert_eq!(normalize_path("sha256:abc123"), "blobs/sha256/abc123");
+    }
+
+    #[test]
+    fn normalize_path_passthrough() {
+        assert_eq!(normalize_path("index.json"), "index.json");
+        assert_eq!(normalize_path("blobs/sha256/abc"), "blobs/sha256/abc");
+    }
+
+    // --- snip_contents ---
+
+    #[test]
+    fn snip_contents_short_string() {
+        let input = "hello world";
+        assert_eq!(snip_contents(input, 100), "hello world");
+    }
+
+    #[test]
+    fn snip_contents_truncates() {
+        let input = "a".repeat(200);
+        let result = snip_contents(&input, 50);
+        assert!(result.starts_with(&"a".repeat(50)));
+        assert!(result.contains("150 characters omitted"));
+    }
+
+    #[test]
+    fn snip_contents_strips_newlines() {
+        let input = "line1\nline2\nline3";
+        let result = snip_contents(input, 100);
+        assert!(!result.contains('\n'));
+        assert_eq!(result, "line1line2line3");
+    }
+
+    // --- verify_digest ---
+
+    fn make_manifest(digest: &str) -> ManifestInfo {
+        ManifestInfo {
+            path: "test".into(),
+            contents: "{}".into(),
+            digest: digest.into(),
+            media_type: "application/vnd.oci.image.manifest.v1+json".into(),
+            platform: None,
+            manifests: vec![],
+        }
+    }
+
+    #[test]
+    fn verify_digest_match() {
+        let index = make_manifest("sha256:0000");
+        let manifest = make_manifest("sha256:abcd1234");
+        let parsed = vec![index, manifest];
+        assert!(verify_digest(&parsed, "sha256:abcd1234").is_ok());
+    }
+
+    #[test]
+    fn verify_digest_match_without_prefix() {
+        let index = make_manifest("sha256:0000");
+        let manifest = make_manifest("sha256:abcd1234");
+        let parsed = vec![index, manifest];
+        assert!(verify_digest(&parsed, "abcd1234").is_ok());
+    }
+
+    #[test]
+    fn verify_digest_mismatch() {
+        let index = make_manifest("sha256:0000");
+        let manifest = make_manifest("sha256:abcd1234");
+        let parsed = vec![index, manifest];
+        assert!(verify_digest(&parsed, "sha256:wrong").is_err());
+    }
+
+    #[test]
+    fn verify_digest_empty_parsed() {
+        let result = verify_digest(&[], "sha256:abc");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("no manifest"));
+    }
+
+    #[test]
+    fn verify_digest_only_index() {
+        let parsed = vec![make_manifest("sha256:0000")];
+        assert!(verify_digest(&parsed, "sha256:abc").is_err());
+    }
+
+    // --- parse_tarball with a real tar ---
+
+    #[test]
+    fn parse_tarball_minimal_oci() {
+        use tempfile::NamedTempFile;
+
+        // Build a minimal OCI tarball: index.json -> one manifest blob
+        let manifest_content = r#"{"mediaType":"application/vnd.oci.image.manifest.v1+json","config":{"digest":"sha256:dead"},"layers":[]}"#;
+        let manifest_digest = format!(
+            "sha256:{}",
+            hex::encode(sha2::Sha256::digest(manifest_content.as_bytes()))
+        );
+        let manifest_blob_path = format!(
+            "blobs/sha256/{}",
+            manifest_digest.strip_prefix("sha256:").unwrap()
+        );
+
+        let index_content = format!(
+            r#"{{"mediaType":"application/vnd.oci.image.index.v1+json","manifests":[{{"digest":"{manifest_digest}","mediaType":"application/vnd.oci.image.manifest.v1+json"}}]}}"#
+        );
+
+        let mut tmpfile = NamedTempFile::new().expect("create temp file");
+        {
+            let file = tmpfile.as_file_mut();
+            let mut builder = tar::Builder::new(file);
+
+            // Add index.json
+            let index_bytes = index_content.as_bytes();
+            let mut header = tar::Header::new_gnu();
+            header.set_size(index_bytes.len() as u64);
+            header.set_mode(0o644);
+            header.set_cksum();
+            builder
+                .append_data(&mut header, "index.json", index_bytes)
+                .expect("append index.json");
+
+            // Add manifest blob
+            let manifest_bytes = manifest_content.as_bytes();
+            let mut header = tar::Header::new_gnu();
+            header.set_size(manifest_bytes.len() as u64);
+            header.set_mode(0o644);
+            header.set_cksum();
+            builder
+                .append_data(&mut header, &manifest_blob_path, manifest_bytes)
+                .expect("append manifest blob");
+
+            builder.finish().expect("finish tar");
+        }
+
+        let parsed = parse_tarball(tmpfile.path()).expect("should parse");
+        assert_eq!(parsed.len(), 2, "index + 1 manifest");
+        assert_eq!(parsed[0].path, "index.json");
+        assert_eq!(parsed[1].digest, manifest_digest);
+    }
+
+    // --- property tests ---
+
+    mod proptests {
+        use super::*;
+        use proptest::prelude::*;
+
+        proptest! {
+            #[test]
+            fn normalize_path_sha256_always_prefixed(hash in "[a-f0-9]{64}") {
+                let input = format!("sha256:{hash}");
+                let result = normalize_path(&input);
+                prop_assert!(result.starts_with("blobs/sha256/"));
+                prop_assert!(result.ends_with(&hash));
+            }
+
+            #[test]
+            fn normalize_path_no_prefix_passthrough(s in "[a-z]{1,50}") {
+                let result = normalize_path(&s);
+                prop_assert_eq!(result, s);
+            }
+
+            #[test]
+            fn snip_contents_length_invariant(
+                input in ".{0,500}",
+                max_len in 1usize..200
+            ) {
+                let result = snip_contents(&input, max_len);
+                let flat_len = input.chars().filter(|c| *c != '\n').count();
+                if flat_len <= max_len {
+                    prop_assert!(!result.contains("omitted"));
+                } else {
+                    prop_assert!(result.contains("omitted"));
+                }
+            }
+
+            #[test]
+            fn snip_contents_no_newlines(input in ".{0,200}") {
+                let result = snip_contents(&input, 100);
+                prop_assert!(!result.contains('\n'));
+            }
+        }
+    }
+}
+
+#[cfg(kani)]
+mod kani_proofs {
+    use super::*;
+
+    #[kani::proof]
+    fn normalize_path_idempotent() {
+        let input = "sha256:abcdef0123456789";
+        let once = normalize_path(input);
+        let twice = normalize_path(&once);
+        assert_eq!(once, twice);
+    }
+
+    #[kani::proof]
+    fn normalize_path_sha256_produces_blobs_prefix() {
+        let input = "sha256:abcdef0123456789";
+        let result = normalize_path(input);
+        assert!(result.starts_with("blobs/sha256/"));
+        assert!(result.ends_with("abcdef0123456789"));
+    }
+
+    #[kani::proof]
+    fn normalize_path_no_sha256_passthrough() {
+        let result = normalize_path("index.json");
+        assert_eq!(result.as_str(), "index.json");
+    }
+
+    #[kani::proof]
+    #[kani::unwind(20)]
+    fn snip_contents_no_newlines() {
+        let result = snip_contents("a\nb\nc", 100);
+        assert!(!result.contains('\n'));
+    }
+
+    #[kani::proof]
+    #[kani::unwind(15)]
+    fn snip_contents_short_no_omitted() {
+        let result = snip_contents("hello", 10);
+        assert!(!result.contains("omitted"));
+    }
+
+    #[kani::proof]
+    #[kani::unwind(20)]
+    fn snip_contents_long_has_omitted() {
+        let result = snip_contents("abcdefghij", 5);
+        assert!(result.contains("omitted"));
+    }
+
+    #[kani::proof]
+    fn verify_digest_with_prefix_matches() {
+        let index = ManifestInfo {
+            path: "index.json".into(),
+            contents: "{}".into(),
+            digest: "sha256:0000".into(),
+            media_type: "application/vnd.oci.image.index.v1+json".into(),
+            platform: None,
+            manifests: vec![],
+        };
+        let manifest = ManifestInfo {
+            path: "blobs/sha256/abcd".into(),
+            contents: "{}".into(),
+            digest: "sha256:abcd1234".into(),
+            media_type: "application/vnd.oci.image.manifest.v1+json".into(),
+            platform: None,
+            manifests: vec![],
+        };
+        let parsed = vec![index, manifest];
+        assert!(verify_digest(&parsed, "sha256:abcd1234").is_ok());
+        assert!(verify_digest(&parsed, "abcd1234").is_ok());
+    }
+
+    #[kani::proof]
+    fn verify_digest_empty_errors() {
+        assert!(verify_digest(&[], "sha256:abc").is_err());
+    }
+}
