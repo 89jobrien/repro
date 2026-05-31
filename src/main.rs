@@ -110,7 +110,6 @@ fn main() -> Result<()> {
     }
 }
 
-// qual:allow(TQ_UNTESTED) — binary entry point setup
 fn init_tracing() {
     tracing_subscriber::fmt()
         .with_env_filter(
@@ -120,7 +119,6 @@ fn init_tracing() {
         .init();
 }
 
-// qual:allow(TQ_UNTESTED) — binary dispatch
 fn run_build(args: BuildArgs) -> Result<()> {
     let dry = args.dry;
     let params = builder::BuildParams {
@@ -147,7 +145,6 @@ fn run_build(args: BuildArgs) -> Result<()> {
     }
 }
 
-// qual:allow(TQ_UNTESTED) — binary dispatch
 fn run_analyze(args: AnalyzeArgs) -> Result<()> {
     let parsed = oci::parse_tarball(&args.tarball)?;
     display::print_info(&parsed, args.show_contents);

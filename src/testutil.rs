@@ -160,8 +160,3 @@ impl OciTarballFixture {
         builder.finish().expect("finish tar");
     }
 }
-
-/// Helper to compute the sha256 digest of a byte slice, with `sha256:` prefix.
-pub fn sha256_digest(data: &[u8]) -> String {
-    format!("sha256:{}", hex::encode(Sha256::digest(data)))
-}
