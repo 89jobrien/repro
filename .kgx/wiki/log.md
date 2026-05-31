@@ -1,3 +1,27 @@
 - write: Repro Codebase Overview
 - write: Builder
 - write: OCI Parser
+- write: Cli
+- write: Commands
+- write: BuildArgs
+- write: AnalyzeArgs
+- write: BuildParams
+- write: Builder
+- write: resolve_runtime
+- write: resolve_sde
+- write: docker_build
+- write: podman_build
+- write: SOURCE_DATE_EPOCH
+- write: rewrite-timestamp
+- write: parse_tarball
+- write: parse_manifest
+- write: verify_digest
+- write: normalize_path
+- write: ManifestInfo
+- write: ManifestDescriptor
+- write: PlatformSpec
+- write: Reproducibility Mechanism
+- write: Runtime Abstraction
+- write: OCI Tarball Analysis
+- write: builder module
+- write: oci module

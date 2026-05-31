@@ -1,26 +1,29 @@
 ---
 title: Builder
+source_document: src_builder
 tags: [entity, struct, core]
 ---
 
 # Builder
 
-Resolved build configuration. Created via `Builder::new(BuildParams)` which applies
-env var fallbacks and validates constraints (e.g. rootless is podman-only).
+Central orchestration struct. Created via `Builder::new(params)` which:
+
+1. Resolves runtime via [[resolve-runtime]]
+2. Resolves SOURCE_DATE_EPOCH via [[resolve-sde]]
+3. Validates Podman-only / Docker-only constraints
+
+Exposes `build()` method that dispatches to [[docker-build]] or [[podman-build]].
 
 ## Fields
 
-context, runtime, rootless, buildkit_image, source_date_epoch, use_cache, file,
-output, tag, build_args, annotations, platform, buildkit_args, buildx_args, dry.
+- `context`, `runtime`, `rootless`, `buildkit_image`
+- `source_date_epoch`, `file`, `output`, `tag`
+- `build_arg`, `annotation`, `platform`
+- `dry`, `buildkit_args`, `buildx_args`
 
-## Dispatch
+## Relations
 
-`build()` matches on `runtime`: "docker" -> [[docker-build]], "podman" -> [[podman-build]].
-
-## Resolution Chain
-
-CLI flag > env var > auto-detect. Key resolvers:
-
-- [[resolve-runtime]]: CLI > `REPRO_RUNTIME` > `which docker/podman`
-- [[resolve-sde]]: `--source-date-epoch` or `--datetime` (RFC3339, ISO)
-- BuildKit image pinned by digest, `docker.io/` prefix added for podman
+- resolves_from → [[BuildParams]]
+- calls → [[docker-build]], [[podman-build]]
+- uses → [[resolve-runtime]], [[resolve-sde]]
+- uses_concept → [[SOURCE-DATE-EPOCH]], [[rewrite-timestamp]]
