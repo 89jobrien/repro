@@ -30,3 +30,18 @@ doc = false
 name = "fuzz_snip_contents"
 path = "fuzz_targets/fuzz_snip_contents.rs"
 doc = false
+
+[[bin]]
+name = "fuzz_raw_tarball"
+path = "fuzz_targets/fuzz_raw_tarball.rs"
+doc = false
+
+[[bin]]
+name = "fuzz_multi_manifest"
+path = "fuzz_targets/fuzz_multi_manifest.rs"
+doc = false
+
+[[bin]]
+name = "fuzz_verify_digest"
+path = "fuzz_targets/fuzz_verify_digest.rs"
+doc = false
