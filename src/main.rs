@@ -1,4 +1,5 @@
 use repro::builder;
+use repro::display;
 use repro::oci;
 
 use anyhow::Result;
@@ -101,44 +102,57 @@ struct AnalyzeArgs {
 }
 
 fn main() -> Result<()> {
+    init_tracing();
+    let cli = Cli::parse();
+    match cli.command {
+        Commands::Build(args) => run_build(*args),
+        Commands::Analyze(args) => run_analyze(args),
+    }
+}
+
+// qual:allow(TQ_UNTESTED) — binary entry point setup
+fn init_tracing() {
     tracing_subscriber::fmt()
         .with_env_filter(
             tracing_subscriber::EnvFilter::try_from_default_env()
                 .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("info")),
         )
         .init();
+}
 
-    let cli = Cli::parse();
-
-    match cli.command {
-        Commands::Build(args) => {
-            let params = builder::BuildParams {
-                context: args.context,
-                runtime: args.runtime,
-                source_date_epoch: args.source_date_epoch,
-                datetime: args.datetime,
-                buildkit_image: args.buildkit_image,
-                no_cache: args.no_cache,
-                rootless: args.rootless,
-                file: args.file,
-                output: args.output,
-                tag: args.tag,
-                build_args: args.build_arg,
-                annotations: args.annotation,
-                platform: args.platform,
-                buildkit_args: args.buildkit_args,
-                buildx_args: args.buildx_args,
-                dry: args.dry,
-            };
-            builder::Builder::new(params)?.build()
-        }
-        Commands::Analyze(args) => {
-            let parsed = oci::parse_tarball(&args.tarball)?;
-            oci::print_info(&parsed, args.show_contents);
-            if let Some(ref expected) = args.expected_image_digest {
-                oci::verify_digest(&parsed, expected)?;
-            }
-            Ok(())
-        }
+// qual:allow(TQ_UNTESTED) — binary dispatch
+fn run_build(args: BuildArgs) -> Result<()> {
+    let dry = args.dry;
+    let params = builder::BuildParams {
+        context: args.context,
+        runtime: args.runtime,
+        source_date_epoch: args.source_date_epoch,
+        datetime: args.datetime,
+        buildkit_image: args.buildkit_image,
+        no_cache: args.no_cache,
+        rootless: args.rootless,
+        file: args.file,
+        output: args.output,
+        tag: args.tag,
+        build_args: args.build_arg,
+        annotations: args.annotation,
+        platform: args.platform,
+        buildkit_args: args.buildkit_args,
+        buildx_args: args.buildx_args,
+    };
+    if dry {
+        builder::Builder::dry(params)?.build()
+    } else {
+        builder::Builder::new(params)?.build()
     }
+}
+
+// qual:allow(TQ_UNTESTED) — binary dispatch
+fn run_analyze(args: AnalyzeArgs) -> Result<()> {
+    let parsed = oci::parse_tarball(&args.tarball)?;
+    display::print_info(&parsed, args.show_contents);
+    if let Some(ref expected) = args.expected_image_digest {
+        oci::verify_digest(&parsed, expected)?;
+    }
+    Ok(())
 }

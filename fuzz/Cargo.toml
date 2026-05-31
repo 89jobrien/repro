@@ -25,3 +25,8 @@ path = ".."
 name = "fuzz_parse_manifest"
 path = "fuzz_targets/fuzz_parse_manifest.rs"
 doc = false
+
+[[bin]]
+name = "fuzz_snip_contents"
+path = "fuzz_targets/fuzz_snip_contents.rs"
+doc = false

@@ -138,7 +138,7 @@ pub fn parse_tarball(path: &Path) -> Result<Vec<ManifestInfo>> {
 }
 
 /// Truncate a string for display, removing newlines.
-fn snip_contents(contents: &str, max_len: usize) -> String {
+pub fn snip_contents(contents: &str, max_len: usize) -> String {
     let flat: String = contents.chars().filter(|c| *c != '\n').collect();
     let char_count = flat.chars().count();
     if char_count > max_len {
@@ -150,36 +150,6 @@ fn snip_contents(contents: &str, max_len: usize) -> String {
     } else {
         flat
     }
-}
-
-/// Print parsed OCI tarball info to stdout.
-pub fn print_info(parsed: &[ManifestInfo], full: bool) {
-    println!(
-        "The OCI tarball contains an index and {} manifest(s):",
-        parsed.len() - 1
-    );
-    println!();
-    if parsed.len() > 1 {
-        println!("Image digest: {}", parsed[1].digest);
-    }
-    for (i, info) in parsed.iter().enumerate() {
-        println!();
-        if i == 0 {
-            println!("Index ({}):", info.path);
-        } else {
-            println!("Manifest {i} ({}):", info.path);
-        }
-        println!("  Digest: {}", info.digest);
-        println!("  Media type: {}", info.media_type);
-        println!("  Platform: {}", info.platform.as_deref().unwrap_or("-"));
-        let contents = if full {
-            info.contents.clone()
-        } else {
-            snip_contents(&info.contents, 600)
-        };
-        println!("  Contents: {contents}");
-    }
-    println!();
 }
 
 /// Verify the image digest matches an expected value.
@@ -393,7 +363,7 @@ mod tests {
 
 #[cfg(kani)]
 mod kani_proofs {
-    use super::*;
+    use super::normalize_path;
 
     // normalize_path: the format!() calls are too heavy for Kani.
     // We verify the branching predicates and the passthrough case.
@@ -423,25 +393,21 @@ mod kani_proofs {
 
     #[kani::proof]
     fn digest_prefix_strip_symmetry() {
-        let with_prefix = "sha256:abcd1234";
-        let without_prefix = "abcd1234";
-
-        let stripped_a = with_prefix.strip_prefix("sha256:").unwrap_or(with_prefix);
-        let stripped_b = without_prefix
-            .strip_prefix("sha256:")
-            .unwrap_or(without_prefix);
-
-        assert_eq!(stripped_a, stripped_b);
+        let a = "sha256:abcd1234";
+        let b = "abcd1234";
+        assert_eq!(
+            a.strip_prefix("sha256:").unwrap_or(a),
+            b.strip_prefix("sha256:").unwrap_or(b),
+        );
     }
 
     #[kani::proof]
     fn digest_mismatch_detected() {
-        let digest = "sha256:abcd1234";
-        let expected = "sha256:wrong";
-
-        let cur = digest.strip_prefix("sha256:").unwrap_or(digest);
-        let exp = expected.strip_prefix("sha256:").unwrap_or(expected);
-
-        assert_ne!(cur, exp);
+        let a = "sha256:abcd1234";
+        let b = "sha256:wrong";
+        assert_ne!(
+            a.strip_prefix("sha256:").unwrap_or(a),
+            b.strip_prefix("sha256:").unwrap_or(b),
+        );
     }
 }
