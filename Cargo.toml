@@ -1,9 +1,12 @@
 [package]
 name = "repro"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 license = "MIT OR Apache-2.0"
 description = "Reproducible container image builder and OCI tarball analyzer"
+repository = "https://github.com/89jobrien/repro"
+homepage = "https://github.com/89jobrien/repro"
+documentation = "https://docs.rs/repro"
 
 [features]
 testutil = ["dep:tempfile"]
